@@ -98,6 +98,27 @@ export async function submitVote(pollId: string, optionIndex: number) {
 // DELETE POLL
 export async function deletePoll(id: string) {
   const supabase = await createClient();
+
+  const { data: poll, error: pollError } = await supabase
+    .from("polls")
+    .select("user_id")
+    .eq("id", id)
+    .single();
+
+  if (pollError || !poll) {
+    return { error: "Poll not found or unauthorized." };
+  }
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return { error: "Unauthorized." };
+  }
+
+  if (poll.user_id !== user.id) {
+    return { error: "Unauthorized." };
+  }
+
   const { error } = await supabase.from("polls").delete().eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/polls");
